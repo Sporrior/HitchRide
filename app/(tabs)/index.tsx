@@ -304,7 +304,7 @@ export default function WelcomeScreen() {
                                 styles.modalContent,
                                 {
                                     transform: [{ translateY: modalSlideAnim }],
-                                    marginBottom: keyboardHeight > 0 ? Math.max(keyboardHeight - 425, -85) : 0,
+                                    marginBottom: keyboardHeight > 0 ? (Platform.OS === 'android' ? -100 : Math.max(keyboardHeight - 425, -85)) : 0,
                                 }
                             ]}
                         >
