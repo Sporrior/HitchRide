@@ -13,9 +13,12 @@ import {
     KeyboardAvoidingView,
     ScrollView,
     Keyboard,
-    Platform
+    Platform,
+    Alert,
+    BackHandler
 } from "react-native";
 import * as Haptics from 'expo-haptics';
+import * as Device from 'expo-device';
 import DefaultButton from "../../components/buttons/DefaultButton";
 
 const { height } = Dimensions.get('window');
@@ -30,6 +33,11 @@ export default function WelcomeScreen() {
     const [keyboardHeight, setKeyboardHeight] = useState(0);
     const [focusedInput, setFocusedInput] = useState<string | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
+
+    // Platform-specific settings
+    const isIOS = Platform.OS === 'ios';
+    const isAndroid = Platform.OS === 'android';
+    const deviceType = Device.deviceType;
 
     // Input refs for focus management
     const nameInputRef = useRef<TextInput>(null);
@@ -62,27 +70,43 @@ export default function WelcomeScreen() {
         overlayOpacity.setValue(0);
     }, []);
 
-    // Keyboard event listeners
+    // Platform-specific keyboard event listeners and back handler
     useEffect(() => {
         const keyboardWillShowListener = Keyboard.addListener(
-            Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
+            isIOS ? 'keyboardWillShow' : 'keyboardDidShow',
             (e) => {
-                setKeyboardHeight(e.endCoordinates.height);
+                const keyboardHeightValue = isIOS ? e.endCoordinates.height : e.endCoordinates.height + 20;
+                setKeyboardHeight(keyboardHeightValue);
             }
         );
 
         const keyboardWillHideListener = Keyboard.addListener(
-            Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
+            isIOS ? 'keyboardWillHide' : 'keyboardDidHide',
             () => {
                 setKeyboardHeight(0);
             }
         );
 
+        // Android back button handler for modal
+        let backHandler: any;
+        if (isAndroid) {
+            backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
+                if (showModal) {
+                    closeModal();
+                    return true; // Prevent default back action
+                }
+                return false; // Allow default back action
+            });
+        }
+
         return () => {
             keyboardWillShowListener.remove();
             keyboardWillHideListener.remove();
+            if (backHandler) {
+                backHandler.remove();
+            }
         };
-    }, []);
+    }, [showModal]);
 
     // Handle modal animations when showModal state changes
     useEffect(() => {
@@ -120,34 +144,53 @@ export default function WelcomeScreen() {
 
     const openModal = () => {
         console.log('Opening modal...');
-        Haptics.selectionAsync();
+        // Platform-specific haptic feedback
+        if (isIOS) {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        } else if (isAndroid) {
+            Haptics.selectionAsync();
+        }
         setShowModal(true);
 
-        // Focus first input after modal animation
+        // Focus first input after modal animation with platform-specific timing
+        const focusDelay = isIOS ? 600 : 500;
         setTimeout(() => {
             if (isLogin) {
                 emailInputRef.current?.focus();
             } else {
                 nameInputRef.current?.focus();
             }
-        }, 500);
+        }, focusDelay);
     };
 
     const closeModal = () => {
-        // Dismiss keyboard first
-        Keyboard.dismiss();
-        Haptics.selectionAsync();
+        // Dismiss keyboard first with platform-specific approach
+        if (isIOS) {
+            Keyboard.dismiss();
+        } else if (isAndroid) {
+            // Force dismiss keyboard on Android
+            Keyboard.dismiss();
+            // Additional Android-specific keyboard dismiss
+            setTimeout(() => Keyboard.dismiss(), 100);
+        }
+
+        // Platform-specific haptic feedback
+        if (isIOS) {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        } else if (isAndroid) {
+            Haptics.selectionAsync();
+        }
 
         // Animate modal out then close
         Animated.parallel([
             Animated.timing(overlayOpacity, {
                 toValue: 0,
-                duration: 200,
+                duration: isIOS ? 200 : 150,
                 useNativeDriver: true,
             }),
             Animated.timing(modalSlideAnim, {
                 toValue: height,
-                duration: 250,
+                duration: isIOS ? 250 : 200,
                 useNativeDriver: true,
             }),
         ]).start(() => {
@@ -163,21 +206,57 @@ export default function WelcomeScreen() {
     const handleContinue = () => {
         if (isSubmitting) return;
 
+        // Dismiss keyboard immediately when inloggen is clicked
+        Keyboard.dismiss();
+
+        // Platform-specific haptic feedback for button press
+        if (isIOS) {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+        } else if (isAndroid) {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+        }
+
         // Simple validation - just check if fields have content
         if (isLogin && email.trim() && password.trim()) {
             setIsSubmitting(true);
+
             // Simulate API call delay
             setTimeout(() => {
-                setIsSubmitting(false);
-                router.push("/Homescreen");
+                // Close modal first, then navigate
+                closeModal();
+
+                // Navigate after modal close animation
+                setTimeout(() => {
+                    setIsSubmitting(false);
+                    router.push("/Homescreen");
+                }, isIOS ? 300 : 250);
             }, 1000);
+
         } else if (!isLogin && email.trim() && password.trim() && name.trim()) {
             setIsSubmitting(true);
+
             // Simulate API call delay
             setTimeout(() => {
-                setIsSubmitting(false);
-                router.push("/Homescreen");
+                // Close modal first, then navigate
+                closeModal();
+
+                // Navigate after modal close animation
+                setTimeout(() => {
+                    setIsSubmitting(false);
+                    router.push("/Homescreen");
+                }, isIOS ? 300 : 250);
             }, 1000);
+        } else {
+            // Show platform-specific validation error
+            const errorMessage = isLogin
+                ? 'Vul je e-mailadres en wachtwoord in'
+                : 'Vul alle velden in';
+
+            if (isIOS) {
+                Alert.alert('Oeps!', errorMessage, [{ text: 'OK' }]);
+            } else if (isAndroid) {
+                Alert.alert('Fout', errorMessage, [{ text: 'OK' }]);
+            }
         }
     };
 
@@ -205,7 +284,12 @@ export default function WelcomeScreen() {
 
     return (
         <>
-            <StatusBar barStyle="dark-content" backgroundColor="#ffffff" />
+            <StatusBar
+                barStyle="dark-content"
+                backgroundColor={isAndroid ? "#ffffff" : undefined}
+                translucent={isAndroid ? false : undefined}
+                hidden={false}
+            />
             <View style={styles.container}>
                 <Animated.View style={[
                     styles.content,
@@ -283,7 +367,10 @@ export default function WelcomeScreen() {
                 transparent={true}
                 animationType="none"
                 onRequestClose={closeModal}
-                statusBarTranslucent={true}
+                statusBarTranslucent={isAndroid}
+                presentationStyle={isIOS ? 'overFullScreen' : undefined}
+                supportedOrientations={['portrait']}
+                hardwareAccelerated={isAndroid}
             >
                 <View style={styles.modalContainer}>
                     <Animated.View style={[styles.overlay, { opacity: overlayOpacity }]}>
@@ -295,16 +382,21 @@ export default function WelcomeScreen() {
                     </Animated.View>
 
                     <KeyboardAvoidingView
-                        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-                        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 10}
+                        behavior={isIOS ? 'padding' : 'height'}
+                        keyboardVerticalOffset={isIOS ? 0 : 20}
                         style={styles.keyboardAvoidingView}
+                        enabled={true}
                     >
                         <Animated.View
                             style={[
                                 styles.modalContent,
                                 {
                                     transform: [{ translateY: modalSlideAnim }],
-                                    marginBottom: keyboardHeight > 0 ? (Platform.OS === 'android' ? Math.max(keyboardHeight + 40, - 0) : Math.max(keyboardHeight - 425, -85)) : 0,
+                                    marginBottom: keyboardHeight > 0 ? (
+                                        isAndroid
+                                            ? Math.max(keyboardHeight - 50, 0)
+                                            : Math.max(keyboardHeight - 400, 0)
+                                    ) : 0,
                                 }
                             ]}
                         >
@@ -352,6 +444,9 @@ export default function WelcomeScreen() {
                                                     onFocus={() => setFocusedInput('name')}
                                                     onBlur={() => setFocusedInput(null)}
                                                     onSubmitEditing={() => emailInputRef.current?.focus()}
+                                                    textContentType={isIOS ? "name" : undefined}
+                                                    importantForAutofill={isAndroid ? "yes" : undefined}
+                                                    autoComplete={isAndroid ? "name" : undefined}
                                                 />
                                             </View>
                                         )}
@@ -371,11 +466,14 @@ export default function WelcomeScreen() {
                                                 returnKeyType="next"
                                                 placeholderTextColor="#9ca3af"
                                                 blurOnSubmit={false}
-                                                textContentType="emailAddress"
-                                                autoComplete="email"
+                                                textContentType={isIOS ? "emailAddress" : undefined}
+                                                autoComplete={isAndroid ? "email" : "email"}
+                                                importantForAutofill={isAndroid ? "yes" : undefined}
                                                 onFocus={() => setFocusedInput('email')}
                                                 onBlur={() => setFocusedInput(null)}
                                                 onSubmitEditing={() => passwordInputRef.current?.focus()}
+                                                autoCorrect={false}
+                                                spellCheck={false}
                                             />
                                         </View>
 
@@ -392,11 +490,15 @@ export default function WelcomeScreen() {
                                                 secureTextEntry
                                                 returnKeyType="done"
                                                 placeholderTextColor="#9ca3af"
-                                                textContentType="password"
-                                                autoComplete="password"
+                                                textContentType={isIOS ? "password" : undefined}
+                                                autoComplete={isAndroid ? "password" : "password"}
+                                                importantForAutofill={isAndroid ? "yes" : undefined}
                                                 onFocus={() => setFocusedInput('password')}
                                                 onBlur={() => setFocusedInput(null)}
                                                 onSubmitEditing={handleContinue}
+                                                autoCorrect={false}
+                                                spellCheck={false}
+                                                passwordRules={isIOS ? "minlength: 6;" : undefined}
                                             />
                                         </View>
 
@@ -458,7 +560,7 @@ const styles = StyleSheet.create({
     logo: {
         width: 80,
         height: 80,
-        backgroundColor: "#000000",
+        backgroundColor: "#1E88E5",
         borderRadius: 16,
         alignItems: "center",
         justifyContent: "center",
@@ -563,15 +665,26 @@ const styles = StyleSheet.create({
         backgroundColor: "#ffffff",
         borderTopLeftRadius: 24,
         borderTopRightRadius: 24,
-        maxHeight: height * 0.85,
-        minHeight: height * 0.5,
+        maxHeight: Platform.OS === 'ios' ? height * 0.85 : height * 0.90,
+        minHeight: Platform.OS === 'ios' ? height * 0.5 : height * 0.55,
+        ...Platform.select({
+            ios: {
+                shadowColor: "#000000",
+                shadowOffset: { width: 0, height: -2 },
+                shadowOpacity: 0.1,
+                shadowRadius: 8,
+            },
+            android: {
+                elevation: 10,
+            },
+        }),
     },
     modalScrollView: {
         flex: 1,
     },
     modalScrollContent: {
         flexGrow: 1,
-        paddingBottom: Platform.OS === 'ios' ? 20 : 40,
+        paddingBottom: Platform.OS === 'ios' ? 30 : 50,
     },
     modalHeader: {
         alignItems: "center",
@@ -629,22 +742,36 @@ const styles = StyleSheet.create({
         borderColor: "#e5e7eb",
         borderRadius: 12,
         paddingHorizontal: 16,
-        paddingVertical: 16,
+        paddingVertical: Platform.OS === 'ios' ? 16 : 14,
         fontSize: 16,
         backgroundColor: "#ffffff",
         color: "#000000",
-        minHeight: 52,
+        minHeight: Platform.OS === 'ios' ? 52 : 56,
+        textAlignVertical: Platform.OS === 'android' ? 'center' : 'auto',
     },
     inputFocused: {
         borderColor: "#000000",
-        shadowColor: "#000000",
-        shadowOffset: {
-            width: 0,
-            height: 2,
-        },
-        shadowOpacity: 0.1,
-        shadowRadius: 4,
-        elevation: 3,
+        ...Platform.select({
+            ios: {
+                shadowColor: "#000000",
+                shadowOffset: {
+                    width: 0,
+                    height: 2,
+                },
+                shadowOpacity: 0.1,
+                shadowRadius: 4,
+            },
+            android: {
+                elevation: 4,
+                shadowColor: "#000000",
+                shadowOffset: {
+                    width: 0,
+                    height: 2,
+                },
+                shadowOpacity: 0.25,
+                shadowRadius: 3.84,
+            },
+        }),
     },
     submitButton: {
         backgroundColor: "#000000",
