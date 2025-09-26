@@ -169,14 +169,14 @@ export default function WelcomeScreen() {
             // Simulate API call delay
             setTimeout(() => {
                 setIsSubmitting(false);
-                router.push("/HomeScreen");
+                router.push("/Homescreen");
             }, 1000);
         } else if (!isLogin && email.trim() && password.trim() && name.trim()) {
             setIsSubmitting(true);
             // Simulate API call delay
             setTimeout(() => {
                 setIsSubmitting(false);
-                router.push("/HomeScreen");
+                router.push("/Homescreen");
             }, 1000);
         }
     };
@@ -285,11 +285,7 @@ export default function WelcomeScreen() {
                 onRequestClose={closeModal}
                 statusBarTranslucent={true}
             >
-                <KeyboardAvoidingView
-                    style={styles.modalContainer}
-                    behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-                    keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
-                >
+                <View style={styles.modalContainer}>
                     <Animated.View style={[styles.overlay, { opacity: overlayOpacity }]}>
                         <TouchableOpacity
                             style={styles.overlayTouchable}
@@ -298,139 +294,145 @@ export default function WelcomeScreen() {
                         />
                     </Animated.View>
 
-                    <Animated.View
-                        style={[
-                            styles.modalContent,
-                            {
-                                transform: [{ translateY: modalSlideAnim }],
-                                maxHeight: height * 0.9 - keyboardHeight * 0.5,
-                            }
-                        ]}
+                    <KeyboardAvoidingView
+                        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+                        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 10}
+                        style={styles.keyboardAvoidingView}
                     >
-                        <View style={styles.modalHeader}>
-                            <View style={styles.modalHandle} />
-                            <TouchableOpacity style={styles.closeButton} onPress={closeModal}>
-                                <Text style={styles.closeButtonText}>×</Text>
-                            </TouchableOpacity>
-                        </View>
-
-                        <ScrollView
-                            style={styles.modalScrollView}
-                            contentContainerStyle={styles.modalScrollContent}
-                            showsVerticalScrollIndicator={false}
-                            keyboardShouldPersistTaps="handled"
+                        <Animated.View
+                            style={[
+                                styles.modalContent,
+                                {
+                                    transform: [{ translateY: modalSlideAnim }],
+                                    marginBottom: keyboardHeight > 0 ? Math.max(keyboardHeight - 425, -85) : 0,
+                                }
+                            ]}
                         >
-                            <View style={styles.modalBody}>
-                                <Text style={styles.modalTitle}>
-                                    {isLogin ? 'Welkom terug' : 'Account aanmaken'}
-                                </Text>
+                            <View style={styles.modalHeader}>
+                                <View style={styles.modalHandle} />
+                                <TouchableOpacity style={styles.closeButton} onPress={closeModal}>
+                                    <Text style={styles.closeButtonText}>×</Text>
+                                </TouchableOpacity>
+                            </View>
 
-                                <Text style={styles.modalSubtitle}>
-                                    {isLogin
-                                        ? 'Voer je gegevens in om door te gaan'
-                                        : 'Maak een account aan om te beginnen'
-                                    }
-                                </Text>
+                            <ScrollView
+                                style={styles.modalScrollView}
+                                contentContainerStyle={styles.modalScrollContent}
+                                showsVerticalScrollIndicator={false}
+                                keyboardShouldPersistTaps="handled"
+                            >
+                                <View style={styles.modalBody}>
+                                    <Text style={styles.modalTitle}>
+                                        {isLogin ? 'Welkom terug' : 'Account aanmaken'}
+                                    </Text>
 
-                                <View style={styles.formContainer}>
-                                    {!isLogin && (
+                                    <Text style={styles.modalSubtitle}>
+                                        {isLogin
+                                            ? 'Voer je gegevens in om door te gaan'
+                                            : 'Maak een account aan om te beginnen'
+                                        }
+                                    </Text>
+
+                                    <View style={styles.formContainer}>
+                                        {!isLogin && (
+                                            <View style={styles.inputContainer}>
+                                                <TextInput
+                                                    ref={nameInputRef}
+                                                    style={[
+                                                        styles.input,
+                                                        focusedInput === 'name' && styles.inputFocused
+                                                    ]}
+                                                    placeholder="Volledige naam"
+                                                    value={name}
+                                                    onChangeText={setName}
+                                                    autoCapitalize="words"
+                                                    returnKeyType="next"
+                                                    placeholderTextColor="#9ca3af"
+                                                    blurOnSubmit={false}
+                                                    onFocus={() => setFocusedInput('name')}
+                                                    onBlur={() => setFocusedInput(null)}
+                                                    onSubmitEditing={() => emailInputRef.current?.focus()}
+                                                />
+                                            </View>
+                                        )}
+
                                         <View style={styles.inputContainer}>
                                             <TextInput
-                                                ref={nameInputRef}
+                                                ref={emailInputRef}
                                                 style={[
                                                     styles.input,
-                                                    focusedInput === 'name' && styles.inputFocused
+                                                    focusedInput === 'email' && styles.inputFocused
                                                 ]}
-                                                placeholder="Volledige naam"
-                                                value={name}
-                                                onChangeText={setName}
-                                                autoCapitalize="words"
+                                                placeholder="E-mailadres"
+                                                value={email}
+                                                onChangeText={setEmail}
+                                                keyboardType="email-address"
+                                                autoCapitalize="none"
                                                 returnKeyType="next"
                                                 placeholderTextColor="#9ca3af"
                                                 blurOnSubmit={false}
-                                                onFocus={() => setFocusedInput('name')}
+                                                textContentType="emailAddress"
+                                                autoComplete="email"
+                                                onFocus={() => setFocusedInput('email')}
                                                 onBlur={() => setFocusedInput(null)}
-                                                onSubmitEditing={() => emailInputRef.current?.focus()}
+                                                onSubmitEditing={() => passwordInputRef.current?.focus()}
                                             />
                                         </View>
-                                    )}
 
-                                    <View style={styles.inputContainer}>
-                                        <TextInput
-                                            ref={emailInputRef}
+                                        <View style={styles.inputContainer}>
+                                            <TextInput
+                                                ref={passwordInputRef}
+                                                style={[
+                                                    styles.input,
+                                                    focusedInput === 'password' && styles.inputFocused
+                                                ]}
+                                                placeholder="Wachtwoord"
+                                                value={password}
+                                                onChangeText={setPassword}
+                                                secureTextEntry
+                                                returnKeyType="done"
+                                                placeholderTextColor="#9ca3af"
+                                                textContentType="password"
+                                                autoComplete="password"
+                                                onFocus={() => setFocusedInput('password')}
+                                                onBlur={() => setFocusedInput(null)}
+                                                onSubmitEditing={handleContinue}
+                                            />
+                                        </View>
+
+                                        <TouchableOpacity
                                             style={[
-                                                styles.input,
-                                                focusedInput === 'email' && styles.inputFocused
+                                                styles.submitButton,
+                                                (!isFormValid || isSubmitting) && styles.submitButtonDisabled
                                             ]}
-                                            placeholder="E-mailadres"
-                                            value={email}
-                                            onChangeText={setEmail}
-                                            keyboardType="email-address"
-                                            autoCapitalize="none"
-                                            returnKeyType="next"
-                                            placeholderTextColor="#9ca3af"
-                                            blurOnSubmit={false}
-                                            textContentType="emailAddress"
-                                            autoComplete="email"
-                                            onFocus={() => setFocusedInput('email')}
-                                            onBlur={() => setFocusedInput(null)}
-                                            onSubmitEditing={() => passwordInputRef.current?.focus()}
-                                        />
-                                    </View>
-
-                                    <View style={styles.inputContainer}>
-                                        <TextInput
-                                            ref={passwordInputRef}
-                                            style={[
-                                                styles.input,
-                                                focusedInput === 'password' && styles.inputFocused
-                                            ]}
-                                            placeholder="Wachtwoord"
-                                            value={password}
-                                            onChangeText={setPassword}
-                                            secureTextEntry
-                                            returnKeyType="done"
-                                            placeholderTextColor="#9ca3af"
-                                            textContentType="password"
-                                            autoComplete="password"
-                                            onFocus={() => setFocusedInput('password')}
-                                            onBlur={() => setFocusedInput(null)}
-                                            onSubmitEditing={handleContinue}
-                                        />
-                                    </View>
-
-                                    <TouchableOpacity
-                                        style={[
-                                            styles.submitButton,
-                                            (!isFormValid || isSubmitting) && styles.submitButtonDisabled
-                                        ]}
-                                        onPress={handleContinue}
-                                        disabled={!isFormValid || isSubmitting}
-                                    >
-                                        <Text style={[
-                                            styles.submitButtonText,
-                                            (!isFormValid || isSubmitting) && styles.submitButtonTextDisabled
-                                        ]}>
-                                            {isSubmitting
-                                                ? 'Bezig...'
-                                                : (isLogin ? 'Inloggen' : 'Account aanmaken')
-                                            }
-                                        </Text>
-                                    </TouchableOpacity>
-
-                                    <TouchableOpacity style={styles.switchButton} onPress={toggleAuthMode}>
-                                        <Text style={styles.switchText}>
-                                            {isLogin ? 'Nog geen account? ' : 'Al een account? '}
-                                            <Text style={styles.switchLink}>
-                                                {isLogin ? 'Registreer' : 'Log in'}
+                                            onPress={handleContinue}
+                                            disabled={!isFormValid || isSubmitting}
+                                        >
+                                            <Text style={[
+                                                styles.submitButtonText,
+                                                (!isFormValid || isSubmitting) && styles.submitButtonTextDisabled
+                                            ]}>
+                                                {isSubmitting
+                                                    ? 'Bezig...'
+                                                    : (isLogin ? 'Inloggen' : 'Account aanmaken')
+                                                }
                                             </Text>
-                                        </Text>
-                                    </TouchableOpacity>
+                                        </TouchableOpacity>
+
+                                        <TouchableOpacity style={styles.switchButton} onPress={toggleAuthMode}>
+                                            <Text style={styles.switchText}>
+                                                {isLogin ? 'Nog geen account? ' : 'Al een account? '}
+                                                <Text style={styles.switchLink}>
+                                                    {isLogin ? 'Registreer' : 'Log in'}
+                                                </Text>
+                                            </Text>
+                                        </TouchableOpacity>
+                                    </View>
                                 </View>
-                            </View>
-                        </ScrollView>
-                    </Animated.View>
-                </KeyboardAvoidingView>
+                            </ScrollView>
+                        </Animated.View>
+                    </KeyboardAvoidingView>
+                </View>
             </Modal>
         </>
     );
@@ -546,6 +548,10 @@ const styles = StyleSheet.create({
         flex: 1,
         justifyContent: "flex-end",
     },
+    keyboardAvoidingView: {
+        flex: 1,
+        justifyContent: "flex-end",
+    },
     overlay: {
         ...StyleSheet.absoluteFillObject,
         backgroundColor: "rgba(0, 0, 0, 0.4)",
@@ -557,15 +563,15 @@ const styles = StyleSheet.create({
         backgroundColor: "#ffffff",
         borderTopLeftRadius: 24,
         borderTopRightRadius: 24,
-        flex: 1,
-        marginTop: 100,
+        maxHeight: height * 0.85,
+        minHeight: height * 0.5,
     },
     modalScrollView: {
         flex: 1,
     },
     modalScrollContent: {
         flexGrow: 1,
-        paddingBottom: 20,
+        paddingBottom: Platform.OS === 'ios' ? 20 : 40,
     },
     modalHeader: {
         alignItems: "center",
@@ -599,7 +605,6 @@ const styles = StyleSheet.create({
         paddingHorizontal: 24,
         paddingTop: 20,
         paddingBottom: 40,
-        minHeight: height * 0.6,
     },
     modalTitle: {
         fontSize: 28,
