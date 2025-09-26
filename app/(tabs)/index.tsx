@@ -304,7 +304,7 @@ export default function WelcomeScreen() {
                                 styles.modalContent,
                                 {
                                     transform: [{ translateY: modalSlideAnim }],
-                                    marginBottom: keyboardHeight > 0 ? (Platform.OS === 'android' ? -100 : Math.max(keyboardHeight - 425, -85)) : 0,
+                                    marginBottom: keyboardHeight > 0 ? (Platform.OS === 'android' ? Math.max(keyboardHeight + 40, - 0) : Math.max(keyboardHeight - 425, -85)) : 0,
                                 }
                             ]}
                         >
@@ -604,7 +604,7 @@ const styles = StyleSheet.create({
     modalBody: {
         paddingHorizontal: 24,
         paddingTop: 20,
-        paddingBottom: 40,
+        paddingBottom: 20,
     },
     modalTitle: {
         fontSize: 28,
