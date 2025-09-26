@@ -228,7 +228,7 @@ export default function WelcomeScreen() {
                 // Navigate after modal close animation
                 setTimeout(() => {
                     setIsSubmitting(false);
-                    router.push("/Homescreen");
+                    router.push("/HomeScreen");
                 }, isIOS ? 300 : 250);
             }, 1000);
 
@@ -243,7 +243,7 @@ export default function WelcomeScreen() {
                 // Navigate after modal close animation
                 setTimeout(() => {
                     setIsSubmitting(false);
-                    router.push("/Homescreen");
+                    router.push("/HomeScreen");
                 }, isIOS ? 300 : 250);
             }, 1000);
         } else {
