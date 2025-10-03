@@ -15,7 +15,8 @@ import {
     Keyboard,
     Platform,
     Alert,
-    BackHandler
+    BackHandler,
+    Image
 } from "react-native";
 import * as Haptics from 'expo-haptics';
 import * as Device from 'expo-device';
@@ -108,10 +109,8 @@ export default function WelcomeScreen() {
         };
     }, [showModal]);
 
-    // Handle modal animations when showModal state changes
     useEffect(() => {
         if (showModal) {
-            // Animate modal in
             Animated.parallel([
                 Animated.timing(overlayOpacity, {
                     toValue: 1,
@@ -126,7 +125,6 @@ export default function WelcomeScreen() {
                 }),
             ]).start();
         } else {
-            // Animate modal out
             Animated.parallel([
                 Animated.timing(overlayOpacity, {
                     toValue: 0,
@@ -144,7 +142,6 @@ export default function WelcomeScreen() {
 
     const openModal = () => {
         console.log('Opening modal...');
-        // Platform-specific haptic feedback
         if (isIOS) {
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
         } else if (isAndroid) {
@@ -152,7 +149,6 @@ export default function WelcomeScreen() {
         }
         setShowModal(true);
 
-        // Focus first input after modal animation with platform-specific timing
         const focusDelay = isIOS ? 600 : 500;
         setTimeout(() => {
             if (isLogin) {
@@ -164,24 +160,19 @@ export default function WelcomeScreen() {
     };
 
     const closeModal = () => {
-        // Dismiss keyboard first with platform-specific approach
         if (isIOS) {
             Keyboard.dismiss();
         } else if (isAndroid) {
-            // Force dismiss keyboard on Android
             Keyboard.dismiss();
-            // Additional Android-specific keyboard dismiss
             setTimeout(() => Keyboard.dismiss(), 100);
         }
 
-        // Platform-specific haptic feedback
         if (isIOS) {
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
         } else if (isAndroid) {
             Haptics.selectionAsync();
         }
 
-        // Animate modal out then close
         Animated.parallel([
             Animated.timing(overlayOpacity, {
                 toValue: 0,
@@ -206,48 +197,38 @@ export default function WelcomeScreen() {
     const handleContinue = () => {
         if (isSubmitting) return;
 
-        // Dismiss keyboard immediately when inloggen is clicked
         Keyboard.dismiss();
 
-        // Platform-specific haptic feedback for button press
         if (isIOS) {
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
         } else if (isAndroid) {
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
         }
 
-        // Simple validation - just check if fields have content
         if (isLogin && email.trim() && password.trim()) {
             setIsSubmitting(true);
 
-            // Simulate API call delay
             setTimeout(() => {
-                // Close modal first, then navigate
                 closeModal();
 
-                // Navigate after modal close animation
                 setTimeout(() => {
                     setIsSubmitting(false);
-                    router.push("/HomeScreen");
+                    router.push("/Homescreen");
                 }, isIOS ? 300 : 250);
             }, 1000);
 
         } else if (!isLogin && email.trim() && password.trim() && name.trim()) {
             setIsSubmitting(true);
 
-            // Simulate API call delay
             setTimeout(() => {
-                // Close modal first, then navigate
                 closeModal();
 
-                // Navigate after modal close animation
                 setTimeout(() => {
                     setIsSubmitting(false);
-                    router.push("/HomeScreen");
+                    router.push("/Homescreen");
                 }, isIOS ? 300 : 250);
             }, 1000);
         } else {
-            // Show platform-specific validation error
             const errorMessage = isLogin
                 ? 'Vul je e-mailadres en wachtwoord in'
                 : 'Vul alle velden in';
@@ -266,13 +247,10 @@ export default function WelcomeScreen() {
         setPassword('');
         setName('');
 
-        // Focus appropriate input after mode switch
         setTimeout(() => {
             if (!isLogin) {
-                // Switching to register, focus name field
                 nameInputRef.current?.focus();
             } else {
-                // Switching to login, focus email field
                 emailInputRef.current?.focus();
             }
         }, 100);
@@ -298,7 +276,6 @@ export default function WelcomeScreen() {
                         transform: [{ translateY: slideAnim }]
                     }
                 ]}>
-                    {/* Hero Section */}
                     <View style={styles.heroSection}>
                         <View style={styles.logoContainer}>
                             <View style={styles.logo}>
@@ -315,41 +292,15 @@ export default function WelcomeScreen() {
                         </Text>
                     </View>
 
-                    {/* Features */}
-                    <View style={styles.featuresSection}>
-                        <View style={styles.featureRow}>
-                            <View style={styles.featureIconBg}>
-                                <Text style={styles.featureIcon}>🛡️</Text>
-                            </View>
-                            <View style={styles.featureContent}>
-                                <Text style={styles.featureTitle}>Veilig reizen</Text>
-                                <Text style={styles.featureDesc}>Alle chauffeurs zijn geverifieerd met ID-controle en rijbewijs verificatie</Text>
-                            </View>
-                        </View>
-
-                        <View style={styles.featureRow}>
-                            <View style={styles.featureIconBg}>
-                                <Text style={styles.featureIcon}>⚡</Text>
-                            </View>
-                            <View style={styles.featureContent}>
-                                <Text style={styles.featureTitle}>Snel gevonden</Text>
-                                <Text style={styles.featureDesc}>Match binnen 2 minuten met chauffeurs in jouw buurt</Text>
-                            </View>
-                        </View>
-
-                        <View style={styles.featureRow}>
-                            <View style={styles.featureIconBg}>
-                                <Text style={styles.featureIcon}>💰</Text>
-                            </View>
-                            <View style={styles.featureContent}>
-                                <Text style={styles.featureTitle}>Eerlijke prijzen</Text>
-                                <Text style={styles.featureDesc}>Geen verrassingen - je ziet de prijs per kilometer vooraf</Text>
-                            </View>
-                        </View>
+                    <View style={styles.illustrationSection}>
+                        <Image
+                            source={require('../../assets/images/rafiki.png')}
+                            style={styles.illustrationImage}
+                            resizeMode="contain"
+                        />
                     </View>
                 </Animated.View>
 
-                {/* Bottom Button */}
                 <View style={styles.bottomSection}>
                     <TouchableOpacity style={styles.continueButton} onPress={openModal}>
                         <Text style={styles.continueButtonText}>Aan de slag</Text>
@@ -361,7 +312,6 @@ export default function WelcomeScreen() {
                 </View>
             </View>
 
-            {/* Modal */}
             <Modal
                 visible={showModal}
                 transparent={true}
@@ -586,7 +536,7 @@ const styles = StyleSheet.create({
         paddingHorizontal: 20,
     },
     featuresSection: {
-        paddingHorizontal: 4,
+        paddingHorizontal: 5,
     },
     featureRow: {
         flexDirection: "row",
@@ -802,5 +752,17 @@ const styles = StyleSheet.create({
     switchLink: {
         color: "#000000",
         fontWeight: "600",
+    },
+    illustrationSection: {
+        flex: 1,
+        justifyContent: "center",
+        alignItems: "center",
+        paddingHorizontal: 20,
+        paddingVertical: 20,
+    },
+    illustrationImage: {
+        width: "100%",
+        height: 250,
+        maxWidth: 300,
     },
 });

@@ -18,12 +18,26 @@ export default function TabLayout() {
                 tabBarButton: HapticTab,
             }}>
             {/* <Tabs.Screen
-                name="HomeScreen1"
+                name="index"
                 options={{
                     title: 'Home',
                     tabBarIcon: ({ color }) => <IconSymbol size={28} name="house.fill" color={color} />,
                 }}
             /> */}
+            <Tabs.Screen
+                name="Homescreen"
+                options={{
+                    title: 'Search',
+                    tabBarIcon: ({ color }) => <IconSymbol size={28} name="magnifyingglass" color={color} />,
+                }}
+            />
+            <Tabs.Screen
+                name="Ride-Tracking"
+                options={{
+                    title: 'Tracking',
+                    tabBarIcon: ({ color }) => <IconSymbol size={28} name="location.fill" color={color} />,
+                }}
+            />
         </Tabs>
     );
 }
