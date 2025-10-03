@@ -9,11 +9,12 @@ import {
     Dimensions,
     Platform,
 } from "react-native";
-import Svg, { Path, Circle, Line, Polyline } from 'react-native-svg';
+import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from 'react-native-maps';
+import Svg, { Path } from 'react-native-svg';
 
 const { width, height } = Dimensions.get('window');
 
-// Vector Icons
+// --- Vector Icons ---
 const CarIcon = ({ size = 24, color = "#1E88E5" }) => (
     <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
         <Path
@@ -62,24 +63,48 @@ const CloseIcon = ({ size = 24, color = "#000000" }) => (
     </Svg>
 );
 
-interface DriverInfo {
-    name: string;
-    rating: number;
-    carModel: string;
-    licensePlate: string;
-    eta: string;
-    profileInitials: string;
-}
+// --- Helper Functions ---
+const calculateBearing = (prev: { latitude: number; longitude: number }, next: { latitude: number; longitude: number }) => {
+    const lat1 = prev.latitude * Math.PI / 180;
+    const lon1 = prev.longitude * Math.PI / 180;
+    const lat2 = next.latitude * Math.PI / 180;
+    const lon2 = next.longitude * Math.PI / 180;
+
+    const y = Math.sin(lon2 - lon1) * Math.cos(lat2);
+    const x = Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(lon2 - lon1);
+    const bearing = Math.atan2(y, x) * 180 / Math.PI;
+    return (bearing + 360) % 360;
+};
+
+const getCoordinatesForProgress = (progress: number, route: { latitude: number; longitude: number }[]) => {
+    if (route.length < 2) return route[0] || null;
+
+    const totalDistance = route.length - 1;
+    const currentPosition = totalDistance * progress;
+    const index = Math.floor(currentPosition);
+    const subProgress = currentPosition - index;
+
+    if (index >= route.length - 1) return route[route.length - 1];
+
+    const start = route[index];
+    const end = route[index + 1];
+
+    const lat = start.latitude + (end.latitude - start.latitude) * subProgress;
+    const lon = start.longitude + (end.longitude - start.longitude) * subProgress;
+
+    return { latitude: lat, longitude: lon };
+};
 
 export default function RideTrackingScreen() {
-    const [rideStatus, setRideStatus] = useState<'searching' | 'found' | 'arriving' | 'onTrip'>('arriving');
+    const [rideStatus, setRideStatus] = useState('arriving');
+    const mapRef = useRef<MapView>(null);
     const [progress, setProgress] = useState(0);
-
-    const pulseAnim = useRef(new Animated.Value(1)).current;
-    const carPositionAnim = useRef(new Animated.Value(0)).current;
+    const [carCoordinate, setCarCoordinate] = useState({ latitude: 52.379189, longitude: 4.899431 });
+    const [carBearing, setCarBearing] = useState(0);
     const slideUpAnim = useRef(new Animated.Value(300)).current;
+    const progressAnim = useRef(new Animated.Value(0)).current;
 
-    const driverInfo: DriverInfo = {
+    const driverInfo = {
         name: "Marco van der Berg",
         rating: 4.9,
         carModel: "Tesla Model 3",
@@ -87,6 +112,17 @@ export default function RideTrackingScreen() {
         eta: "3 min",
         profileInitials: "MB"
     };
+
+    const routeCoordinates = [
+        { latitude: 52.379189, longitude: 4.899431 },
+        { latitude: 52.376, longitude: 4.895 },
+        { latitude: 52.37, longitude: 4.885 },
+        { latitude: 52.36, longitude: 4.87 },
+        { latitude: 52.35, longitude: 4.85 },
+        { latitude: 52.34, longitude: 4.82 },
+        { latitude: 52.33, longitude: 4.79 },
+        { latitude: 52.308616, longitude: 4.763889 },
+    ];
 
     useEffect(() => {
         Animated.spring(slideUpAnim, {
@@ -96,115 +132,96 @@ export default function RideTrackingScreen() {
             useNativeDriver: true,
         }).start();
 
-        Animated.loop(
-            Animated.sequence([
-                Animated.timing(pulseAnim, {
-                    toValue: 1.2,
-                    duration: 1000,
-                    useNativeDriver: true,
-                }),
-                Animated.timing(pulseAnim, {
-                    toValue: 1,
-                    duration: 1000,
-                    useNativeDriver: true,
-                }),
-            ])
-        ).start();
-
-        Animated.loop(
-            Animated.timing(carPositionAnim, {
+        const carAnimation = Animated.loop(
+            Animated.timing(progressAnim, {
                 toValue: 1,
-                duration: 5000,
+                duration: 20000,
                 useNativeDriver: false,
             })
-        ).start();
+        );
+        carAnimation.start();
 
-        const interval = setInterval(() => {
-            setProgress(prev => {
-                if (prev >= 100) return 0;
-                return prev + 1;
+        const listenerId = progressAnim.addListener(({ value }) => {
+            setProgress(value * 100);
+            const newCoordinate = getCoordinatesForProgress(value, routeCoordinates);
+            if (newCoordinate) {
+                const nextCoordinate = getCoordinatesForProgress(value + 0.001, routeCoordinates);
+                const newBearing = calculateBearing(newCoordinate, nextCoordinate);
+                setCarCoordinate(newCoordinate);
+                setCarBearing(newBearing);
+            }
+        });
+
+        setTimeout(() => {
+            mapRef.current?.fitToCoordinates(routeCoordinates, {
+                edgePadding: { top: 150, right: 50, bottom: 450, left: 50 },
+                animated: true,
             });
-        }, 50);
+        }, 1000);
 
-        return () => clearInterval(interval);
+        return () => {
+            progressAnim.removeListener(listenerId);
+            carAnimation.stop();
+        };
     }, []);
 
-    const carPosition = carPositionAnim.interpolate({
-        inputRange: [0, 1],
-        outputRange: [50, 250],
-    });
+    const pickupLocation = routeCoordinates[0];
+    const destinationLocation = routeCoordinates[routeCoordinates.length - 1];
 
     return (
         <View style={styles.container}>
             <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
 
-            <View style={styles.mapContainer}>
-                <View style={styles.mapBackground}>
-                    <Svg width={width} height={height * 0.6} style={styles.routeSvg}>
-                        <Polyline
-                            points="50,100 150,200 250,150 350,250"
-                            fill="none"
-                            stroke="#1E88E5"
-                            strokeWidth="4"
-                            strokeDasharray="10,5"
-                        />
-                        <Circle cx="50" cy="100" r="8" fill="#4CAF50" />
-                        <Circle cx="350" cy="250" r="8" fill="#F44336" />
-                    </Svg>
+            <MapView
+                ref={mapRef}
+                style={styles.map}
+                provider={PROVIDER_GOOGLE}
+                initialRegion={{
+                    ...pickupLocation,
+                    latitudeDelta: 0.0922,
+                    longitudeDelta: 0.0421,
+                }}
+            >
+                <Polyline coordinates={routeCoordinates} strokeColor="#1E88E5" strokeWidth={5} />
+                <Marker coordinate={pickupLocation} title="Pickup">
+                    <View style={styles.markerDot} />
+                </Marker>
+                <Marker coordinate={destinationLocation} title="Destination">
+                    <View style={[styles.markerDot, { backgroundColor: '#F44336' }]} />
+                </Marker>
+                {carCoordinate && (
+                    <Marker
+                        anchor={{ x: 0.5, y: 0.5 }}
+                        coordinate={carCoordinate}
+                        rotation={carBearing}
+                        flat
+                    >
+                        <CarIcon size={32} color="#1E88E5" />
+                    </Marker>
+                )}
+            </MapView>
 
-
-                    <Animated.View style={[
-                        styles.carIconContainer,
-                        {
-                            transform: [
-                                { translateX: carPosition },
-                                {
-                                    translateY: carPosition.interpolate({
-                                        inputRange: [50, 150, 250, 350],
-                                        outputRange: [100, 200, 150, 250],
-                                        extrapolate: 'clamp'
-                                    })
-                                }
-                            ]
-                        }
-                    ]}>
-                        <Animated.View style={{
-                            transform: [{ scale: pulseAnim }]
-                        }}>
-                            <CarIcon size={32} color="#1E88E5" />
-                        </Animated.View>
-                    </Animated.View>
-                </View>
-
-                <View style={styles.topStatusBar}>
-                    <TouchableOpacity style={styles.closeButton}>
-                        <CloseIcon size={24} color="#000000" />
-                    </TouchableOpacity>
-                    <View style={styles.statusContainer}>
-                        <Text style={styles.statusText}>
-                            {rideStatus === 'arriving' ? 'Driver is arriving' :
-                                rideStatus === 'found' ? 'Driver found' :
-                                    rideStatus === 'onTrip' ? 'On trip' : 'Searching for driver'}
-                        </Text>
-                        <Text style={styles.etaText}>ETA: {driverInfo.eta}</Text>
-                    </View>
+            <View style={styles.topStatusBar}>
+                <TouchableOpacity style={styles.closeButton}>
+                    <CloseIcon size={24} color="#000000" />
+                </TouchableOpacity>
+                <View style={styles.statusContainer}>
+                    <Text style={styles.statusText}>
+                        {rideStatus === 'arriving' ? 'Driver is arriving' : 'On trip'}
+                    </Text>
+                    <Text style={styles.etaText}>ETA: {driverInfo.eta}</Text>
                 </View>
             </View>
 
-            <Animated.View style={[
-                styles.bottomCard,
-                {
-                    transform: [{ translateY: slideUpAnim }]
-                }
-            ]}>
+            <Animated.View style={[styles.bottomCard, { transform: [{ translateY: slideUpAnim }] }]}>
                 <View style={styles.progressBarContainer}>
                     <View style={styles.progressBarBackground}>
-                        <Animated.View style={[
-                            styles.progressBarFill,
-                            {
-                                width: `${progress}%`
-                            }
-                        ]} />
+                        <Animated.View
+                            style={[
+                                styles.progressBarFill,
+                                { width: `${progress}%` }
+                            ]}
+                        />
                     </View>
                 </View>
 
@@ -263,73 +280,47 @@ export default function RideTrackingScreen() {
 }
 
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        backgroundColor: '#f5f5f5',
-    },
-    mapContainer: {
-        flex: 1,
-        position: 'relative',
-    },
-    mapBackground: {
-        flex: 1,
-        backgroundColor: '#e8f4f8',
-        position: 'relative',
-    },
-    routeSvg: {
-        position: 'absolute',
-        top: 0,
-        left: 0,
-    },
-    carIconContainer: {
-        position: 'absolute',
-        top: 0,
-        left: 0,
-        width: 32,
-        height: 32,
-        justifyContent: 'center',
-        alignItems: 'center',
+    container: { flex: 1, backgroundColor: '#f5f5f5' },
+    map: { ...StyleSheet.absoluteFillObject },
+    markerDot: {
+        width: 16,
+        height: 16,
+        borderRadius: 8,
+        backgroundColor: '#4CAF50',
+        borderWidth: 2,
+        borderColor: 'white',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.2,
+        shadowRadius: 2,
+        elevation: 3,
     },
     topStatusBar: {
         position: 'absolute',
-        top: Platform.OS === 'ios' ? 50 : 30,
-        left: 0,
-        right: 0,
+        top: Platform.OS === 'ios' ? 60 : 40,
+        left: 20,
+        right: 20,
         flexDirection: 'row',
         alignItems: 'center',
         paddingHorizontal: 20,
         paddingVertical: 15,
-        backgroundColor: 'rgba(255, 255, 255, 0.95)',
-        marginHorizontal: 20,
+        backgroundColor: 'rgba(255, 255, 255, 0.98)',
         borderRadius: 12,
         shadowColor: '#000',
-        shadowOffset: {
-            width: 0,
-            height: 2,
-        },
+        shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.1,
         shadowRadius: 8,
         elevation: 5,
     },
-    closeButton: {
-        padding: 5,
-    },
-    statusContainer: {
-        flex: 1,
-        alignItems: 'center',
-        marginLeft: -29,
-    },
-    statusText: {
-        fontSize: 16,
-        fontWeight: '600',
-        color: '#333',
-    },
-    etaText: {
-        fontSize: 14,
-        color: '#666',
-        marginTop: 2,
-    },
+    closeButton: { padding: 5 },
+    statusContainer: { flex: 1, alignItems: 'center', marginLeft: -29 },
+    statusText: { fontSize: 16, fontWeight: '600', color: '#333' },
+    etaText: { fontSize: 14, color: '#666', marginTop: 2 },
     bottomCard: {
+        position: 'absolute',
+        bottom: 0,
+        left: 0,
+        right: 0,
         backgroundColor: '#ffffff',
         borderTopLeftRadius: 24,
         borderTopRightRadius: 24,
@@ -337,17 +328,12 @@ const styles = StyleSheet.create({
         paddingTop: 20,
         paddingBottom: Platform.OS === 'ios' ? 40 : 20,
         shadowColor: '#000',
-        shadowOffset: {
-            width: 0,
-            height: -2,
-        },
+        shadowOffset: { width: 0, height: -2 },
         shadowOpacity: 0.1,
         shadowRadius: 8,
         elevation: 10,
     },
-    progressBarContainer: {
-        marginBottom: 20,
-    },
+    progressBarContainer: { marginBottom: 20 },
     progressBarBackground: {
         height: 4,
         backgroundColor: '#e0e0e0',
@@ -364,10 +350,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         marginBottom: 20,
     },
-    driverAvatarContainer: {
-        alignItems: 'center',
-        marginRight: 15,
-    },
+    driverAvatarContainer: { alignItems: 'center', marginRight: 15 },
     driverAvatar: {
         width: 60,
         height: 60,
@@ -377,45 +360,19 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         marginBottom: 5,
     },
-    driverInitials: {
-        color: '#ffffff',
-        fontSize: 20,
-        fontWeight: '600',
-    },
+    driverInitials: { color: '#ffffff', fontSize: 20, fontWeight: '600' },
     ratingContainer: {
         backgroundColor: '#f0f0f0',
         paddingHorizontal: 8,
         paddingVertical: 2,
         borderRadius: 10,
     },
-    ratingText: {
-        fontSize: 12,
-        color: '#333',
-        fontWeight: '500',
-    },
-    driverDetails: {
-        flex: 1,
-    },
-    driverName: {
-        fontSize: 18,
-        fontWeight: '600',
-        color: '#333',
-        marginBottom: 2,
-    },
-    carInfo: {
-        fontSize: 14,
-        color: '#666',
-        marginBottom: 2,
-    },
-    licensePlate: {
-        fontSize: 14,
-        color: '#666',
-        fontWeight: '500',
-    },
-    actionButtons: {
-        flexDirection: 'row',
-        gap: 10,
-    },
+    ratingText: { fontSize: 12, color: '#333', fontWeight: '500' },
+    driverDetails: { flex: 1 },
+    driverName: { fontSize: 18, fontWeight: '600', color: '#333', marginBottom: 2 },
+    carInfo: { fontSize: 14, color: '#666', marginBottom: 2 },
+    licensePlate: { fontSize: 14, color: '#666', fontWeight: '500' },
+    actionButtons: { flexDirection: 'row' },
     phoneButton: {
         width: 44,
         height: 44,
@@ -423,6 +380,7 @@ const styles = StyleSheet.create({
         backgroundColor: '#4CAF50',
         justifyContent: 'center',
         alignItems: 'center',
+        marginRight: 10,
     },
     messageButton: {
         width: 44,
@@ -432,14 +390,8 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
     },
-    tripDetails: {
-        marginBottom: 20,
-    },
-    locationContainer: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        marginVertical: 8,
-    },
+    tripDetails: { marginBottom: 20 },
+    locationContainer: { flexDirection: 'row', alignItems: 'center', marginVertical: 8 },
     locationDot: {
         width: 12,
         height: 12,
@@ -447,25 +399,15 @@ const styles = StyleSheet.create({
         backgroundColor: '#4CAF50',
         marginRight: 15,
     },
-    locationInfo: {
-        flex: 1,
-    },
-    locationLabel: {
-        fontSize: 12,
-        color: '#666',
-        marginBottom: 2,
-    },
-    locationAddress: {
-        fontSize: 16,
-        color: '#333',
-        fontWeight: '500',
-    },
+    locationInfo: { flex: 1 },
+    locationLabel: { fontSize: 12, color: '#666', marginBottom: 2 },
+    locationAddress: { fontSize: 16, color: '#333', fontWeight: '500' },
     routeLine: {
         width: 2,
         height: 20,
         backgroundColor: '#e0e0e0',
         marginLeft: 5,
-        marginVertical: 5,
+        marginVertical: -5,
     },
     cancelButton: {
         backgroundColor: '#f44336',
@@ -473,9 +415,5 @@ const styles = StyleSheet.create({
         borderRadius: 12,
         alignItems: 'center',
     },
-    cancelButtonText: {
-        color: '#ffffff',
-        fontSize: 16,
-        fontWeight: '600',
-    },
+    cancelButtonText: { color: '#ffffff', fontSize: 16, fontWeight: '600' },
 });

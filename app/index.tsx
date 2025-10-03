@@ -20,7 +20,7 @@ import {
 } from "react-native";
 import * as Haptics from 'expo-haptics';
 import * as Device from 'expo-device';
-import DefaultButton from "../../components/buttons/DefaultButton";
+import DefaultButton from "../components/buttons/DefaultButton";
 
 const { height } = Dimensions.get('window');
 
@@ -35,24 +35,21 @@ export default function WelcomeScreen() {
     const [focusedInput, setFocusedInput] = useState<string | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
 
-    // Platform-specific settings
+
     const isIOS = Platform.OS === 'ios';
     const isAndroid = Platform.OS === 'android';
     const deviceType = Device.deviceType;
 
-    // Input refs for focus management
     const nameInputRef = useRef<TextInput>(null);
     const emailInputRef = useRef<TextInput>(null);
     const passwordInputRef = useRef<TextInput>(null);
 
-    // Animation values
     const fadeAnim = new Animated.Value(0);
     const slideAnim = new Animated.Value(30);
     const modalSlideAnim = new Animated.Value(height);
     const overlayOpacity = new Animated.Value(0);
 
     useEffect(() => {
-        // Start entrance animations
         Animated.parallel([
             Animated.timing(fadeAnim, {
                 toValue: 1,
@@ -66,12 +63,10 @@ export default function WelcomeScreen() {
             }),
         ]).start();
 
-        // Reset modal animations to initial state
         modalSlideAnim.setValue(height);
         overlayOpacity.setValue(0);
     }, []);
 
-    // Platform-specific keyboard event listeners and back handler
     useEffect(() => {
         const keyboardWillShowListener = Keyboard.addListener(
             isIOS ? 'keyboardWillShow' : 'keyboardDidShow',
@@ -88,15 +83,14 @@ export default function WelcomeScreen() {
             }
         );
 
-        // Android back button handler for modal
         let backHandler: any;
         if (isAndroid) {
             backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
                 if (showModal) {
                     closeModal();
-                    return true; // Prevent default back action
+                    return true;
                 }
-                return false; // Allow default back action
+                return false;
             });
         }
 
@@ -294,7 +288,7 @@ export default function WelcomeScreen() {
 
                     <View style={styles.illustrationSection}>
                         <Image
-                            source={require('../../assets/images/rafiki.png')}
+                            source={require('../assets/images/rafiki.png')}
                             style={styles.illustrationImage}
                             resizeMode="contain"
                         />
