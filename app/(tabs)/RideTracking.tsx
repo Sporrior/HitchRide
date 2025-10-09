@@ -63,6 +63,9 @@ const CloseIcon = ({ size = 24, color = "#000000" }) => (
     </Svg>
 );
 
+const trackingKm = 20;
+const trackingPricePerKm = 1.2;
+
 // --- Helper Functions ---
 const calculateBearing = (prev: { latitude: number; longitude: number }, next: { latitude: number; longitude: number }) => {
     const lat1 = prev.latitude * Math.PI / 180;
@@ -101,8 +104,10 @@ export default function RideTrackingScreen() {
     const [progress, setProgress] = useState(0);
     const [carCoordinate, setCarCoordinate] = useState({ latitude: 52.379189, longitude: 4.899431 });
     const [carBearing, setCarBearing] = useState(0);
+    const [distance, setDistance] = useState(0);
     const slideUpAnim = useRef(new Animated.Value(300)).current;
     const progressAnim = useRef(new Animated.Value(0)).current;
+    const trackingAnim = useRef(new Animated.Value(0)).current;
 
     const driverInfo = {
         name: "Marco van der Berg",
@@ -132,14 +137,18 @@ export default function RideTrackingScreen() {
             useNativeDriver: true,
         }).start();
 
-        const carAnimation = Animated.loop(
-            Animated.timing(progressAnim, {
-                toValue: 1,
-                duration: 20000,
-                useNativeDriver: false,
-            })
-        );
-        carAnimation.start();
+        const carAnimation = Animated.timing(progressAnim, {
+            toValue: 1,
+            duration: 20000,
+            useNativeDriver: false,
+        }).start();
+
+        Animated.timing(trackingAnim, {
+            toValue: trackingKm,
+            duration: 20000,
+            useNativeDriver: false,
+        }).start();
+
 
         const listenerId = progressAnim.addListener(({ value }) => {
             setProgress(value * 100);
@@ -152,6 +161,10 @@ export default function RideTrackingScreen() {
             }
         });
 
+        trackingAnim.addListener(({ value }) => {
+            setDistance(value);
+        });
+
         setTimeout(() => {
             mapRef.current?.fitToCoordinates(routeCoordinates, {
                 edgePadding: { top: 150, right: 50, bottom: 450, left: 50 },
@@ -161,7 +174,6 @@ export default function RideTrackingScreen() {
 
         return () => {
             progressAnim.removeListener(listenerId);
-            carAnimation.stop();
         };
     }, []);
 
@@ -267,6 +279,21 @@ export default function RideTrackingScreen() {
                         <View style={styles.locationInfo}>
                             <Text style={styles.locationLabel}>Destination</Text>
                             <Text style={styles.locationAddress}>Schiphol Airport</Text>
+                        </View>
+                    </View>
+
+                    <View style={styles.locationContainer}>
+                        <View style={styles.locationInfo}>
+                            <Text style={styles.locationLabel}>Distance</Text>
+                            <Text style={styles.locationAddress}>{ Math.round(distance * 100) / 100 } km</Text>
+                        </View>
+                        <View style={styles.locationInfo}>
+                            <Text style={styles.locationLabel}>Price</Text>
+                            <Text style={styles.locationAddress}>€{trackingPricePerKm}/km</Text>
+                        </View>
+                        <View style={styles.locationInfo}>
+                            <Text style={styles.locationLabel}>Total</Text>
+                            <Text style={styles.locationAddress}>€{ Math.round((distance * trackingPricePerKm) * 100) / 100 }</Text>
                         </View>
                     </View>
                 </View>

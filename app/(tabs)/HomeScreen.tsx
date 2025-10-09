@@ -120,7 +120,7 @@ export default function HomeScreen() {
 
     const handleCardPress = (index: number) => {
         setSelectedCard(index);
-        router.push('/(tabs)/Ride-Tracking');
+        router.push('/(tabs)/RideTracking');
         setTimeout(() => setSelectedCard(null), 200);
     };
 
