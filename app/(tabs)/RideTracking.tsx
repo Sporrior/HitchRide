@@ -10,7 +10,7 @@ import {
     Platform,
 } from "react-native";
 import MapView, { Marker, Polyline, PROVIDER_GOOGLE } from 'react-native-maps';
-import Svg, { Path } from 'react-native-svg';
+import { Svg, Path } from 'react-native-svg';
 
 const { width, height } = Dimensions.get('window');
 

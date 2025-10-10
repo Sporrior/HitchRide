@@ -11,7 +11,7 @@ import {
     ScrollView,
     Platform,
 } from "react-native";
-import Svg, { Path, Circle } from 'react-native-svg';
+import { Svg, Path, Circle } from 'react-native-svg';
 import { useRouter } from 'expo-router'
 const { width, height } = Dimensions.get('window');
 
